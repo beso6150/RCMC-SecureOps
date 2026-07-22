@@ -42,7 +42,7 @@ backend/storage/cctv-operations/**
 !backend/storage/cctv-operations/.gitkeep
 backend/storage/incidents/**
 !backend/storage/incidents/.gitkeep
-uploads/
+/backend/uploads/
 
 # Flutter / React (future)
 mobile/.dart_tool/
