@@ -1,0 +1,2993 @@
+// RCMC SecureOps — PostgreSQL / Prisma
+// Visible app: المشرف الأمني الذكي
+// Sprint 02 schema + Sprint 03 IAM (RefreshToken, PermissionPolicy)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ──────────────────────────────────────────────────────
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING_FIRST_LOGIN
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+  CRITICAL
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  DELIVERED
+  UNREAD
+  READ
+  ACKNOWLEDGED
+  EXPIRED
+  FAILED
+  CANCELLED
+}
+
+enum NotificationCategory {
+  INCIDENT
+  EMERGENCY
+  CCTV_REFERRAL
+  PERMIT
+  PATROL
+  CHECKPOINT
+  FIELD_ALERT
+  SOS
+  VEHICLE_VIOLATION
+  VISITOR
+  SHIFT
+  HANDOVER
+  TASK
+  REPORT
+  APPROVAL
+  SECURITY
+  SYSTEM
+  MESSAGE
+}
+
+enum NotificationKind {
+  INFORMATIONAL
+  ACTION_REQUIRED
+  ACKNOWLEDGEMENT_REQUIRED
+  URGENT
+  CRITICAL
+}
+
+enum NotificationActionType {
+  OPEN
+  ACKNOWLEDGE
+  ACCEPT
+  REJECT
+  START
+  RESOLVE
+  REVIEW
+  APPROVE
+  NONE
+}
+
+enum NotificationDeliveryChannel {
+  IN_APP
+  SOCKET
+  WEB_PUSH
+  MOBILE_PUSH
+}
+
+enum NotificationDeliveryStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+  SKIPPED
+}
+
+enum ConversationType {
+  DIRECT
+  GROUP
+  INCIDENT
+  REFERRAL
+  SHIFT
+  OPERATIONS
+  TASK
+}
+
+enum ConversationParticipantRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum InternalMessageType {
+  TEXT
+  IMAGE
+  DOCUMENT
+  SYSTEM
+  STATUS_UPDATE
+  LOCATION
+  TASK_REFERENCE
+}
+
+enum VehiclePermitStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+  REVOKED
+}
+
+enum CameraRequestStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum VehicleViolationStatus {
+  NEW
+  ASSIGNED
+  IN_PROGRESS
+  RESOLVED
+  CANCELLED
+}
+
+enum ViolationType {
+  ILLEGAL_PARKING
+  NO_PERMIT
+  EXPIRED_PERMIT
+  BLOCKING
+  UNAUTHORIZED_ZONE
+  OTHER
+}
+
+enum ParkingLocationCode {
+  GROUND_PARKING
+  BASEMENT_PARKING
+  BASEMENT_P1
+  BASEMENT_P2
+  WEST_PARKING
+}
+
+enum PatrolStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  MISSED
+  CANCELLED
+}
+
+enum IncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IncidentStatus {
+  NEW
+  REPORTED
+  ACKNOWLEDGED
+  ASSESSING
+  ASSIGNED
+  RESPONDING
+  ON_SCENE
+  CONTAINED
+  IN_PROGRESS
+  ON_HOLD
+  RESOLVED
+  CLOSED
+  ESCALATED
+  REOPENED
+  CANCELLED
+  FALSE_ALARM
+}
+
+enum IncidentHistoryAction {
+  CREATED
+  UPDATED
+  REPORTED
+  ACKNOWLEDGED
+  ASSESSMENT_ADDED
+  ASSIGNED
+  REASSIGNED
+  RESPONSE_STARTED
+  ARRIVED
+  CONTAINED
+  STATUS_CHANGED
+  COMMENTED
+  NOTE_ADDED
+  ATTACHMENT_ADDED
+  CONTACT_LOGGED
+  ESCALATED
+  RESOLVED
+  CLOSED
+  REOPENED
+  CANCELLED
+  FALSE_ALARM
+  FOLLOW_UP_CREATED
+  SUPPORT_REQUESTED
+  PDF_GENERATED
+}
+
+enum IncidentSource {
+  SECURITY_GUARD
+  SUPERVISOR
+  CCTV_OPERATOR
+  CCTV_REFERRAL
+  PATROL
+  FIELD_ALERT
+  SOS
+  VEHICLE_VIOLATION
+  VISITOR
+  OPERATIONS_ROOM
+  SYSTEM
+  OTHER
+}
+
+enum IncidentAssignmentType {
+  PRIMARY
+  SUPPORT
+  SUPERVISOR
+  CCTV_SUPPORT
+  MEDICAL_SUPPORT
+  OPERATIONS_SUPPORT
+}
+
+enum IncidentNoteType {
+  GENERAL
+  FIELD_UPDATE
+  OPERATIONS_NOTE
+  SUPERVISOR_NOTE
+  CCTV_NOTE
+  CONFIDENTIAL
+  FOLLOW_UP
+}
+
+enum IncidentNoteVisibility {
+  ALL_AUTHORIZED
+  OPERATIONS_ONLY
+  SUPERVISORS_ONLY
+  DIRECTORS_ONLY
+}
+
+enum IncidentContactType {
+  INTERNAL_SECURITY
+  MEDICAL_TEAM
+  FACILITIES
+  FIRE_SAFETY
+  CIVIL_DEFENSE
+  AMBULANCE
+  POLICE
+  MANAGEMENT
+  HOST
+  OTHER
+}
+
+enum IncidentTaskStatus {
+  PENDING
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  OVERDUE
+}
+
+enum IncidentFollowUpStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  OVERDUE
+  CANCELLED
+}
+
+enum ComplaintStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  CLOSED
+}
+
+enum AttachmentType {
+  IMAGE
+  SCREENSHOT
+  DOCUMENT
+  VIDEO
+  VIDEO_SHORT
+  AUDIO
+  OTHER
+}
+
+enum VisitStatus {
+  UPCOMING
+  ARRIVED
+  HOST_NOTIFIED
+  IN_MEETING
+  COMPLETED
+  CANCELLED
+}
+
+enum VisitImportance {
+  NORMAL
+  IMPORTANT
+  VIP
+}
+
+enum HostCommunicationPreference {
+  WHATSAPP
+  PHONE_CALL
+  BOTH
+}
+
+enum VisitHistoryAction {
+  CREATED
+  UPDATED
+  ARRIVED
+  HOST_NOTIFIED
+  IN_MEETING
+  COMPLETED
+  CANCELLED
+  EMAIL_IMPORTED
+  STATUS_CHANGED
+}
+
+enum VisitEmailParseStatus {
+  PENDING
+  PROCESSED
+  REJECTED
+}
+
+enum VisitNotificationChannel {
+  REALTIME
+  WHATSAPP
+  PHONE_CALL
+  EMAIL
+}
+
+enum VisitNotificationDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+  READ
+}
+
+enum ShiftKind {
+  MORNING
+  EVENING
+}
+
+enum ShiftGroupCode {
+  A
+  B
+  C
+  D
+}
+
+enum OperationalStatus {
+  ON_DUTY
+  ON_PATROL
+  HANDLING_INCIDENT
+  FIELD_TASK
+  WITH_CCTV
+  ON_BREAK
+  OFF_DUTY
+}
+
+enum ShiftSessionStatus {
+  OPEN
+  HANDOVER_PENDING
+  CLOSED
+}
+
+enum HandoverStepStatus {
+  PENDING
+  APPROVED
+}
+
+enum TaskStatus {
+  NEW
+  PENDING
+  ASSIGNED
+  ACCEPTED
+  IN_PROGRESS
+  WAITING
+  COMPLETED
+  REJECTED
+  CANCELLED
+  OVERDUE
+}
+
+enum TaskPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+  CRITICAL
+}
+
+enum OperationalTaskType {
+  SECURITY_RESPONSE
+  PATROL
+  CHECKPOINT
+  INCIDENT_FOLLOW_UP
+  CCTV_FOLLOW_UP
+  PERMIT_VERIFICATION
+  VISITOR_ASSISTANCE
+  VEHICLE_CHECK
+  HANDOVER
+  REPORT_REVIEW
+  GENERAL
+}
+
+enum TaskUpdateType {
+  CREATED
+  ASSIGNED
+  ACCEPTED
+  STARTED
+  NOTE_ADDED
+  EVIDENCE_ADDED
+  WAITING
+  COMPLETED
+  REJECTED
+  REASSIGNED
+  CANCELLED
+  OVERDUE
+}
+
+enum AuditAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  FAILED_LOGIN
+  PASSWORD_CHANGE
+  PERMISSION_CHANGE
+  APPROVE
+  REJECT
+  ASSIGN
+  EXPORT
+  SYSTEM
+  DOWNLOAD
+  PRINT
+  VIEW_SENSITIVE
+  ACCESS_DENIED
+}
+
+enum AuditSeverity {
+  INFO
+  WARNING
+  HIGH
+  CRITICAL
+}
+
+// ─── RBAC ───────────────────────────────────────────────────────
+
+model Role {
+  id          String    @id @default(uuid()) @db.Uuid
+  code        String    @unique
+  nameEn      String
+  nameAr      String
+  description String?   @db.Text
+  isSystem    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  users           User[]
+  rolePermissions RolePermission[]
+
+  @@index([deletedAt])
+  @@map("roles")
+}
+
+model Permission {
+  id          String    @id @default(uuid()) @db.Uuid
+  code        String    @unique
+  resource    String
+  action      String
+  description String?   @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  rolePermissions    RolePermission[]
+  permissionPolicies PermissionPolicy[]
+
+  @@unique([resource, action])
+  @@index([resource])
+  @@index([deletedAt])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String   @id @default(uuid()) @db.Uuid
+  roleId       String   @db.Uuid
+  permissionId String   @db.Uuid
+  createdAt    DateTime @default(now())
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+/// Editable policy hooks for dashboard (conditions JSON)
+model PermissionPolicy {
+  id           String    @id @default(uuid()) @db.Uuid
+  permissionId String    @db.Uuid
+  name         String
+  description  String?   @db.Text
+  /// e.g. { "effect": "deny"|"allow", "when": { "field": "phone", "unless": "context.incidentHandling" } }
+  conditions   Json
+  priority     Int       @default(100)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@index([permissionId, isActive])
+  @@index([deletedAt])
+  @@map("permission_policies")
+}
+
+// ─── Org structure ──────────────────────────────────────────────
+
+model Department {
+  id          String    @id @default(uuid()) @db.Uuid
+  code        String    @unique
+  nameEn      String
+  nameAr      String
+  description String?   @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  users User[]
+  hosts Host[]
+
+  @@index([deletedAt])
+  @@map("departments")
+}
+
+model Building {
+  id        String    @id @default(uuid()) @db.Uuid
+  code      String    @unique
+  nameEn    String
+  nameAr    String
+  address   String?   @db.Text
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  floors Floor[]
+
+  @@index([deletedAt])
+  @@map("buildings")
+}
+
+model Floor {
+  id         String    @id @default(uuid()) @db.Uuid
+  buildingId String    @db.Uuid
+  code       String
+  nameEn     String
+  nameAr     String
+  level      Int
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+
+  building     Building      @relation(fields: [buildingId], references: [id], onDelete: Restrict)
+  locations    Location[]
+  meetingRooms MeetingRoom[]
+  visitors     Visitor[]
+  incidents    Incident[]
+
+  @@unique([buildingId, code])
+  @@index([buildingId])
+  @@index([deletedAt])
+  @@map("floors")
+}
+
+model Location {
+  id          String    @id @default(uuid()) @db.Uuid
+  floorId     String    @db.Uuid
+  code        String
+  nameEn      String
+  nameAr      String
+  description String?   @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  floor             Floor              @relation(fields: [floorId], references: [id], onDelete: Restrict)
+  visitors          Visitor[]
+  vehiclePermits    VehiclePermit[]
+  vehicleViolations VehicleViolation[]
+  patrols           Patrol[]
+  incidents         Incident[]
+  complaints        Complaint[]
+
+  @@unique([floorId, code])
+  @@index([floorId])
+  @@index([deletedAt])
+  @@map("locations")
+}
+
+model Shift {
+  id          String    @id @default(uuid()) @db.Uuid
+  code        String    @unique
+  nameEn      String
+  nameAr      String
+  startTime   String
+  endTime     String
+  timezone    String    @default("Asia/Riyadh")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  users     User[]
+  incidents Incident[]
+
+  @@index([deletedAt])
+  @@map("shifts")
+}
+
+model ShiftGroup {
+  id        String         @id @default(uuid()) @db.Uuid
+  code      ShiftGroupCode @unique
+  nameAr    String
+  nameEn    String
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  deletedAt DateTime?
+
+  users          User[]
+  sessions       ShiftSession[]
+  patrolRoutes   PatrolRoute[]
+  patrolSessions PatrolSession[]
+  fieldAlerts    FieldAlert[]
+  permitShares   PermitShare[]
+  securityReferrals SecurityReferral[]
+  incidentAssignments IncidentAssignment[]
+  incidentTasks  IncidentTask[]
+  incidentsAssigned Incident[] @relation("IncidentAssignedGroup")
+  savedReports   SavedReport[]
+  reportSchedules ReportSchedule[] @relation("ReportScheduleGroup")
+  tasksAssigned  Task[] @relation("TaskAssignedGroup")
+
+  @@index([deletedAt])
+  @@map("shift_groups")
+}
+
+model ShiftCycleConfig {
+  id               String   @id @default(uuid()) @db.Uuid
+  cycleStartDate   DateTime @db.Date
+  morningStartTime String   @default("06:00")
+  morningEndTime   String   @default("18:00")
+  eveningStartTime String   @default("18:00")
+  eveningEndTime   String   @default("06:00")
+  timezone         String   @default("Asia/Riyadh")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("shift_cycle_configs")
+}
+
+model ShiftSession {
+  id          String             @id @default(uuid()) @db.Uuid
+  kind        ShiftKind
+  groupId     String             @db.Uuid
+  cycleDay    Int
+  serviceDate DateTime           @db.Date
+  startsAt    DateTime
+  endsAt      DateTime
+  status      ShiftSessionStatus @default(OPEN)
+  closedAt    DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  group          ShiftGroup      @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  handover       ShiftHandover?
+  alerts         ShiftAlertLog[]
+  patrolSessions PatrolSession[]
+
+  @@unique([kind, startsAt])
+  @@index([groupId])
+  @@index([status])
+  @@index([serviceDate])
+  @@map("shift_sessions")
+}
+
+model ShiftHandover {
+  id                   String             @id @default(uuid()) @db.Uuid
+  sessionId            String             @unique @db.Uuid
+  outgoingSupervisorId String             @db.Uuid
+  incomingSupervisorId String             @db.Uuid
+  openIncidentsCount   Int                @default(0)
+  closedIncidentsCount Int                @default(0)
+  patrolsCount         Int                @default(0)
+  violationsCount      Int                @default(0)
+  notes                String?            @db.Text
+  equipmentNotes       String?            @db.Text
+  handoverStatus       HandoverStepStatus @default(PENDING)
+  takeoverStatus       HandoverStepStatus @default(PENDING)
+  handoverApprovedAt   DateTime?
+  takeoverApprovedAt   DateTime?
+  handoverApprovedById String?            @db.Uuid
+  takeoverApprovedById String?            @db.Uuid
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  session              ShiftSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  outgoingSupervisor   User         @relation("HandoverOutgoing", fields: [outgoingSupervisorId], references: [id], onDelete: Restrict)
+  incomingSupervisor   User         @relation("HandoverIncoming", fields: [incomingSupervisorId], references: [id], onDelete: Restrict)
+  handoverApprovedBy   User?        @relation("HandoverApprovedBy", fields: [handoverApprovedById], references: [id], onDelete: SetNull)
+  takeoverApprovedBy   User?        @relation("TakeoverApprovedBy", fields: [takeoverApprovedById], references: [id], onDelete: SetNull)
+
+  @@index([outgoingSupervisorId])
+  @@index([incomingSupervisorId])
+  @@map("shift_handovers")
+}
+
+model ShiftAlertLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  sessionId String   @db.Uuid
+  alertKey  String
+  sentAt    DateTime @default(now())
+
+  session ShiftSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, alertKey])
+  @@index([sessionId])
+  @@map("shift_alert_logs")
+}
+
+// ─── Users ──────────────────────────────────────────────────────
+
+model User {
+  id                String             @id @default(uuid()) @db.Uuid
+  nationalId        String             @unique
+  employeeNumber    String             @unique
+  fullName          String
+  email             String             @unique
+  phone             String?
+  jobTitle          String?
+  passwordHash      String
+  status            UserStatus         @default(PENDING_FIRST_LOGIN)
+  isFirstLogin      Boolean            @default(true)
+  lastLoginAt       DateTime?
+  roleId            String             @db.Uuid
+  departmentId      String?            @db.Uuid
+  shiftId           String?            @db.Uuid
+  groupId           String?            @db.Uuid
+  operationalStatus OperationalStatus  @default(OFF_DUTY)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  deletedAt         DateTime?
+
+  role          Role           @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  department    Department?    @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  shift         Shift?         @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  group         ShiftGroup?    @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  refreshTokens RefreshToken[]
+
+  hostedVisitors         Visitor[]          @relation("VisitorHost")
+  hostsAsRecord          Host[]             @relation("HostUser")
+  visitHistoryActions    VisitHistory[]     @relation("VisitHistoryActor")
+  visitNotifications     VisitNotification[] @relation("VisitNotificationRecipient")
+  vehiclePermitsApproved VehiclePermit[]    @relation("PermitApprover")
+  violationsCreated      VehicleViolation[] @relation("ViolationCreator")
+  violationsAsSupervisor VehicleViolation[] @relation("ViolationSupervisor")
+  violationsAsOperator   VehicleViolation[] @relation("ViolationCctvOperator")
+  patrolsAssigned        Patrol[]           @relation("PatrolAssignee")
+  incidentsReported      Incident[]         @relation("IncidentReporter")
+  incidentsAssigned      Incident[]         @relation("IncidentAssignee")
+  incidentsAsSupervisor  Incident[]         @relation("IncidentSupervisor")
+  incidentsAsOpsManager  Incident[]         @relation("IncidentOpsManager")
+  incidentsAssignedBy    Incident[]         @relation("IncidentAssignedBy")
+  incidentsAcknowledged  Incident[]         @relation("IncidentAcknowledgedBy")
+  incidentsAssessed      Incident[]         @relation("IncidentAssessedBy")
+  incidentsClosed        Incident[]         @relation("IncidentClosedBy")
+  incidentComments       IncidentComment[]  @relation("IncidentCommentAuthor")
+  incidentHistoryActions IncidentHistory[]  @relation("IncidentHistoryActor")
+  incidentAttachmentsUploaded IncidentAttachment[] @relation("IncidentAttachmentUploader")
+  incidentAssignmentsMade IncidentAssignment[] @relation("IncidentAssignmentAssigner")
+  incidentAssignmentsReceived IncidentAssignment[] @relation("IncidentAssignmentAssignee")
+  incidentNotesCreated   IncidentNote[]     @relation("IncidentNoteAuthor")
+  incidentContactsMade   IncidentContactLog[] @relation("IncidentContactActor")
+  incidentTasksAssigned  IncidentTask[]     @relation("IncidentTaskAssignee")
+  incidentTasksCreated   IncidentTask[]     @relation("IncidentTaskCreator")
+  incidentTasksCompleted IncidentTask[]     @relation("IncidentTaskCompleter")
+  incidentFollowUpsAssigned IncidentFollowUp[] @relation("IncidentFollowUpAssignee")
+  incidentFollowUpsCreated IncidentFollowUp[] @relation("IncidentFollowUpCreator")
+  emergencyProceduresCreated EmergencyProcedure[] @relation("EmergencyProcedureCreator")
+  incidentProcedureStepsCompleted IncidentProcedureStep[] @relation("IncidentProcedureStepCompleter")
+  savedReportsGenerated SavedReport[] @relation("SavedReportGenerator")
+  savedReportsApproved SavedReport[] @relation("SavedReportApprover")
+  savedReportsAsSubject SavedReport[] @relation("SavedReportSubject")
+  reportApprovals ReportApproval[] @relation("ReportApprovalActor")
+  reportSchedulesCreated ReportSchedule[] @relation("ReportScheduleCreator")
+  reportAccessLogs ReportAccessLog[] @relation("ReportAccessActor")
+  complaintsSubmitted    Complaint[]        @relation("ComplaintSubmitter")
+  complaintsReviewed     Complaint[]        @relation("ComplaintReviewer")
+  notifications          Notification[]
+  notificationsSent      Notification[]     @relation("NotificationSender")
+  notificationsAcknowledged Notification[]  @relation("NotificationAcknowledger")
+  tasksAssigned          Task[]             @relation("TaskAssignee")
+  tasksCreated           Task[]             @relation("TaskAssigner")
+  tasksCompleted         Task[]             @relation("TaskCompleter")
+  tasksAuthored          Task[]             @relation("TaskCreator")
+  taskUpdates            TaskUpdate[]       @relation("TaskUpdateAuthor")
+  taskEvidencesUploaded  TaskEvidence[]     @relation("TaskEvidenceUploader")
+  notificationPreferences NotificationPreference[]
+  notificationRulesCreated NotificationRule[] @relation("NotificationRuleCreator")
+  notificationDeliveries NotificationDelivery[]
+  conversationsCreated   InternalConversation[] @relation("ConversationCreator")
+  conversationsClosed    InternalConversation[] @relation("ConversationCloser")
+  conversationParticipants ConversationParticipant[]
+  messagesSent           InternalMessage[]  @relation("MessageSender")
+  messagesDeleted        InternalMessage[]  @relation("MessageDeleter")
+  messageAttachmentsUploaded MessageAttachment[] @relation("MessageAttachmentUploader")
+  responseTimesAsActor   ResponseTime[]     @relation("ResponseTimeActor")
+  auditLogs              AuditLog[]
+  cameraRequestsCreated  CameraRequest[]    @relation("CameraRequestRequester")
+  cameraRequestsAssigned CameraRequest[]    @relation("CameraRequestOperator")
+  handoversOutgoing      ShiftHandover[]    @relation("HandoverOutgoing")
+  handoversIncoming      ShiftHandover[]    @relation("HandoverIncoming")
+  handoversApproved      ShiftHandover[]    @relation("HandoverApprovedBy")
+  takeoversApproved      ShiftHandover[]    @relation("TakeoverApprovedBy")
+  patrolSessionsAssigned PatrolSession[]    @relation("PatrolSessionAssignee")
+  patrolSessionsAssignedBy PatrolSession[]  @relation("PatrolSessionAssigner")
+  patrolVisits           PatrolCheckpointVisit[] @relation("PatrolVisitActor")
+  personnelLocations     PersonnelLocation[] @relation("PersonnelLocations")
+  fieldAlertsAssigned    FieldAlert[]       @relation("FieldAlertAssignee")
+  fieldAlertsCreated     FieldAlert[]       @relation("FieldAlertCreator")
+  securityPermitsCreated SecurityPermit[]   @relation("SecurityPermitCreator")
+  permitSharesSent       PermitShare[]      @relation("PermitShareSender")
+  permitSharesReceived   PermitShare[]      @relation("PermitShareRecipient")
+  securityReferralsCreated SecurityReferral[] @relation("SecurityReferralCreator")
+  securityReferralsAssigned SecurityReferral[] @relation("SecurityReferralAssignee")
+  securityReferralsAssignedBy SecurityReferral[] @relation("SecurityReferralAssigner")
+  securityReferralAttachments SecurityReferralAttachment[] @relation("SecurityReferralAttachmentUploader")
+  securityReferralUpdates SecurityReferralUpdate[] @relation("SecurityReferralUpdateAuthor")
+  referralResponses      ReferralResponse[] @relation("ReferralResponder")
+  mobileDevices          UserMobileDevice[]
+  mobileSyncOperations   MobileSyncOperation[]
+
+  @@index([roleId])
+  @@index([departmentId])
+  @@index([shiftId])
+  @@index([groupId])
+  @@index([operationalStatus])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  userAgent String?
+  ipAddress String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+// ─── Visitors & Hosts ───────────────────────────────────────────
+
+model Host {
+  id                      String                      @id @default(uuid()) @db.Uuid
+  userId                  String?                     @db.Uuid
+  employeeNumber          String                      @unique
+  employeeName            String
+  departmentId            String?                     @db.Uuid
+  phone                   String?
+  communicationPreference HostCommunicationPreference @default(WHATSAPP)
+  whatsappEnabled         Boolean                     @default(true)
+  phoneCallEnabled        Boolean                     @default(false)
+  email                   String?
+  createdAt               DateTime                    @default(now())
+  updatedAt               DateTime                    @updatedAt
+  deletedAt               DateTime?
+
+  user     User?       @relation("HostUser", fields: [userId], references: [id], onDelete: SetNull)
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  visitors Visitor[]
+
+  @@index([userId])
+  @@index([departmentId])
+  @@index([employeeNumber])
+  @@index([deletedAt])
+  @@map("hosts")
+}
+
+model MeetingRoom {
+  id        String    @id @default(uuid()) @db.Uuid
+  floorId   String    @db.Uuid
+  code      String
+  nameEn    String
+  nameAr    String
+  capacity  Int?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  floor    Floor     @relation(fields: [floorId], references: [id], onDelete: Restrict)
+  visitors Visitor[]
+  incidents Incident[]
+
+  @@unique([floorId, code])
+  @@index([floorId])
+  @@index([deletedAt])
+  @@map("meeting_rooms")
+}
+
+model Visitor {
+  id              String          @id @default(uuid()) @db.Uuid
+  visitorName     String
+  nationalId      String?
+  organization    String?
+  mobile          String?
+  vehiclePlate    String?
+  visitDate       DateTime        @db.Date
+  arrivalTime     DateTime?
+  departureTime   DateTime?
+  importance      VisitImportance @default(NORMAL)
+  purpose         String?         @db.Text
+  status          VisitStatus     @default(UPCOMING)
+  hostId          String          @db.Uuid
+  hostUserId      String?         @db.Uuid
+  floorId         String?         @db.Uuid
+  meetingRoomId   String?         @db.Uuid
+  locationId      String?         @db.Uuid
+  badgeNumber     String?
+  hostNotifiedAt  DateTime?
+  hostRespondedAt DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  deletedAt       DateTime?
+
+  host            Host               @relation(fields: [hostId], references: [id], onDelete: Restrict)
+  hostUser        User?              @relation("VisitorHost", fields: [hostUserId], references: [id], onDelete: SetNull)
+  floor           Floor?             @relation(fields: [floorId], references: [id], onDelete: SetNull)
+  meetingRoom     MeetingRoom?       @relation(fields: [meetingRoomId], references: [id], onDelete: SetNull)
+  location        Location?          @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  history         VisitHistory[]
+  notifications   VisitNotification[]
+  emailIngests    VisitEmailIngest[]
+
+  @@index([hostId])
+  @@index([hostUserId])
+  @@index([floorId])
+  @@index([meetingRoomId])
+  @@index([locationId])
+  @@index([nationalId])
+  @@index([visitDate])
+  @@index([status])
+  @@index([importance])
+  @@index([arrivalTime])
+  @@index([deletedAt])
+  @@map("visitors")
+}
+
+model VisitHistory {
+  id         String             @id @default(uuid()) @db.Uuid
+  visitorId  String             @db.Uuid
+  action     VisitHistoryAction
+  actorId    String?            @db.Uuid
+  fromStatus VisitStatus?
+  toStatus   VisitStatus?
+  notes      String?            @db.Text
+  metadata   Json?
+  createdAt  DateTime           @default(now())
+
+  visitor Visitor @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  actor   User?   @relation("VisitHistoryActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([visitorId])
+  @@index([actorId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("visit_history")
+}
+
+model VisitNotification {
+  id        String                          @id @default(uuid()) @db.Uuid
+  visitorId String                          @db.Uuid
+  userId    String?                         @db.Uuid
+  channel   VisitNotificationChannel        @default(REALTIME)
+  title     String
+  body      String                          @db.Text
+  status    VisitNotificationDeliveryStatus @default(PENDING)
+  /// Deep-link / dial URI / template payload for clients
+  payload   Json?
+  createdAt DateTime                        @default(now())
+  readAt    DateTime?
+  sentAt    DateTime?
+
+  visitor   Visitor @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  recipient User?   @relation("VisitNotificationRecipient", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([visitorId])
+  @@index([userId])
+  @@index([channel])
+  @@index([status])
+  @@index([createdAt])
+  @@map("visit_notifications")
+}
+
+/// Future mail-parser inbox (only @rcmc.gov.sa)
+model VisitEmailIngest {
+  id           String                @id @default(uuid()) @db.Uuid
+  subject      String
+  body         String                @db.Text
+  receivedAt   DateTime
+  senderDomain String
+  senderEmail  String?
+  visitorId    String?               @db.Uuid
+  parseStatus  VisitEmailParseStatus @default(PENDING)
+  rawHeaders   Json?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  visitor Visitor? @relation(fields: [visitorId], references: [id], onDelete: SetNull)
+
+  @@index([senderDomain])
+  @@index([receivedAt])
+  @@index([parseStatus])
+  @@index([visitorId])
+  @@map("visit_email_ingests")
+}
+
+// ─── Vehicles ───────────────────────────────────────────────────
+
+model VehiclePermit {
+  id           String              @id @default(uuid()) @db.Uuid
+  plateNumber  String
+  vehicleType  String?
+  ownerName    String?
+  ownerPhone   String?
+  locationId   String?             @db.Uuid
+  status       VehiclePermitStatus @default(PENDING)
+  validFrom    DateTime
+  validTo      DateTime
+  approvedById String?             @db.Uuid
+  notes        String?             @db.Text
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  deletedAt    DateTime?
+
+  location       Location?       @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  approvedBy     User?           @relation("PermitApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  cameraRequests CameraRequest[]
+
+  @@index([plateNumber])
+  @@index([status])
+  @@index([locationId])
+  @@index([approvedById])
+  @@index([validFrom, validTo])
+  @@index([deletedAt])
+  @@map("vehicle_permits")
+}
+
+model CameraRequest {
+  id                 String              @id @default(uuid()) @db.Uuid
+  plateNumber        String
+  notes              String?             @db.Text
+  status             CameraRequestStatus @default(PENDING)
+  requestedById      String              @db.Uuid
+  assignedOperatorId String?             @db.Uuid
+  employeeName       String?
+  departmentName     String?
+  phone              String?
+  permitStatus       String?
+  vehicleType        String?
+  ownerName          String?
+  permitId           String?             @db.Uuid
+  responseNotes      String?             @db.Text
+  startedAt          DateTime?
+  completedAt        DateTime?
+  responseTimeMs     Int?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  deletedAt          DateTime?
+
+  requestedBy      User           @relation("CameraRequestRequester", fields: [requestedById], references: [id])
+  assignedOperator User?          @relation("CameraRequestOperator", fields: [assignedOperatorId], references: [id])
+  permit           VehiclePermit? @relation(fields: [permitId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([plateNumber])
+  @@index([requestedById])
+  @@index([assignedOperatorId])
+  @@index([deletedAt])
+  @@map("camera_requests")
+}
+
+model VehicleViolation {
+  id               String                 @id @default(uuid()) @db.Uuid
+  plateNumber      String
+  ocrResult        String?                @db.Text
+  ocrConfidence    Float?
+  arabicPlate      String?
+  englishPlate     String?
+  vehicleColor     String?
+  violationType    ViolationType
+  parkingCode      ParkingLocationCode
+  locationId       String                 @db.Uuid
+  zoneId           String?                @db.Uuid
+  checkpointId     String?                @db.Uuid
+  mapX             Float?
+  mapY             Float?
+  gpsLatitude      Decimal?               @db.Decimal(10, 7)
+  gpsLongitude     Decimal?               @db.Decimal(10, 7)
+  imagePath        String?
+  createdById      String                 @db.Uuid
+  supervisorId     String?                @db.Uuid
+  cctvOperatorId   String?                @db.Uuid
+  status           VehicleViolationStatus @default(NEW)
+  closedAt         DateTime?
+  notes            String?                @db.Text
+  /// Client-generated id for offline sync idempotency
+  clientSyncId     String?                @unique
+  detectedAt       DateTime               @default(now())
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  deletedAt        DateTime?
+
+  location      Location              @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  zone          SecurityZone?         @relation("ViolationZone", fields: [zoneId], references: [id], onDelete: SetNull)
+  checkpoint    SecurityCheckpoint?   @relation("ViolationCheckpoint", fields: [checkpointId], references: [id], onDelete: SetNull)
+  createdBy     User                  @relation("ViolationCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  supervisor    User?                 @relation("ViolationSupervisor", fields: [supervisorId], references: [id], onDelete: SetNull)
+  cctvOperator  User?                 @relation("ViolationCctvOperator", fields: [cctvOperatorId], references: [id], onDelete: SetNull)
+  attachments   ViolationAttachment[]
+  responseTimes ResponseTime[]
+  linkedIncidents Incident[] @relation("IncidentFromViolation")
+
+  @@index([plateNumber])
+  @@index([status])
+  @@index([parkingCode])
+  @@index([locationId])
+  @@index([zoneId])
+  @@index([checkpointId])
+  @@index([createdById])
+  @@index([supervisorId])
+  @@index([cctvOperatorId])
+  @@index([violationType])
+  @@index([detectedAt])
+  @@index([createdAt])
+  @@index([closedAt])
+  @@index([deletedAt])
+  @@index([updatedAt])
+  @@map("vehicle_violations")
+}
+
+model ViolationAttachment {
+  id          String         @id @default(uuid()) @db.Uuid
+  violationId String         @db.Uuid
+  fileName    String
+  mimeType    String
+  fileSize    Int
+  storageKey  String
+  /// Public or relative image path for clients
+  imagePath   String?
+  type        AttachmentType @default(IMAGE)
+  sortOrder   Int            @default(0)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  deletedAt   DateTime?
+
+  violation VehicleViolation @relation(fields: [violationId], references: [id], onDelete: Cascade)
+
+  @@index([violationId])
+  @@index([deletedAt])
+  @@map("violation_attachments")
+}
+
+// ─── Operations ─────────────────────────────────────────────────
+
+model Patrol {
+  id          String       @id @default(uuid()) @db.Uuid
+  code        String?
+  title       String
+  locationId  String?      @db.Uuid
+  assigneeId  String?      @db.Uuid
+  status      PatrolStatus @default(SCHEDULED)
+  scheduledAt DateTime
+  startedAt   DateTime?
+  completedAt DateTime?
+  notes       String?      @db.Text
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  deletedAt   DateTime?
+
+  location Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  assignee User?     @relation("PatrolAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([locationId])
+  @@index([assigneeId])
+  @@index([scheduledAt])
+  @@index([deletedAt])
+  @@map("patrols")
+}
+
+model IncidentType {
+  id          String    @id @default(uuid()) @db.Uuid
+  code        String    @unique
+  nameAr      String
+  nameEn      String
+  description String?   @db.Text
+  isActive    Boolean   @default(true)
+  sortOrder   Int       @default(100)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  incidents Incident[]
+
+  @@index([isActive])
+  @@index([deletedAt])
+  @@map("incident_types")
+}
+
+model Incident {
+  id             String                 @id @default(uuid()) @db.Uuid
+  incidentNumber String?                @unique
+  typeId         String                 @db.Uuid
+  title          String
+  description    String                 @db.Text
+  notes          String?                @db.Text
+  severity       IncidentSeverity       @default(MEDIUM)
+  status         IncidentStatus         @default(NEW)
+  source         IncidentSource?
+  parkingCode    ParkingLocationCode?
+  floorId        String?                @db.Uuid
+  floorNumber    Int?
+  meetingRoomId  String?                @db.Uuid
+  locationId     String?                @db.Uuid
+  zoneId         String?                @db.Uuid
+  checkpointId   String?                @db.Uuid
+  patrolSessionId String?               @db.Uuid
+  mapX           Float?
+  mapY           Float?
+  locationDescription String?           @db.Text
+  shiftId        String?                @db.Uuid
+  assignedGroupId String?               @db.Uuid
+  reporterId     String?                @db.Uuid
+  assigneeId     String?                @db.Uuid
+  assignedById   String?                @db.Uuid
+  assignedAt     DateTime?
+  supervisorId   String?                @db.Uuid
+  opsManagerId   String?                @db.Uuid
+  acknowledgedById String?              @db.Uuid
+  acknowledgedAt DateTime?
+  assessedById   String?                @db.Uuid
+  assessedAt     DateTime?
+  closedById     String?                @db.Uuid
+  gpsLatitude    Decimal?               @db.Decimal(10, 7)
+  gpsLongitude   Decimal?               @db.Decimal(10, 7)
+  occurredAt     DateTime               @default(now())
+  reportedAt     DateTime?
+  startedAt      DateTime?
+  responseStartedAt DateTime?
+  arrivedAt      DateTime?
+  containedAt    DateTime?
+  closedAt       DateTime?
+  resolvedAt     DateTime?
+  cancelledAt    DateTime?
+  cancellationReason String?            @db.Text
+  falseAlarmReason String?              @db.Text
+  resolutionSummary String?             @db.Text
+  rootCause      String?                @db.Text
+  actionsTaken   String?                @db.Text
+  recommendations String?               @db.Text
+  assessmentJson Json?
+  requiresFollowUp Boolean              @default(false)
+  followUpDueAt  DateTime?
+  escalationLevel Int                   @default(0)
+  escalatedAt    DateTime?
+  escalationReason String?              @db.Text
+  relatedReferralId String?             @db.Uuid
+  relatedPermitId String?               @db.Uuid
+  relatedViolationId String?            @db.Uuid
+  slaDueAt       DateTime?
+  durationMs     Int?
+  pdfPath        String?
+  clientSyncId   String?                @unique
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  deletedAt      DateTime?
+
+  type          IncidentType         @relation(fields: [typeId], references: [id], onDelete: Restrict)
+  floor         Floor?               @relation(fields: [floorId], references: [id], onDelete: SetNull)
+  meetingRoom   MeetingRoom?         @relation(fields: [meetingRoomId], references: [id], onDelete: SetNull)
+  location      Location?            @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  zone          SecurityZone?        @relation("IncidentZone", fields: [zoneId], references: [id], onDelete: SetNull)
+  checkpoint    SecurityCheckpoint?  @relation("IncidentCheckpoint", fields: [checkpointId], references: [id], onDelete: SetNull)
+  patrolSession PatrolSession?       @relation("IncidentPatrolSession", fields: [patrolSessionId], references: [id], onDelete: SetNull)
+  shift         Shift?               @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  assignedGroup ShiftGroup?          @relation("IncidentAssignedGroup", fields: [assignedGroupId], references: [id], onDelete: SetNull)
+  reporter      User?                @relation("IncidentReporter", fields: [reporterId], references: [id], onDelete: SetNull)
+  assignee      User?                @relation("IncidentAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  assignedBy    User?                @relation("IncidentAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
+  supervisor    User?                @relation("IncidentSupervisor", fields: [supervisorId], references: [id], onDelete: SetNull)
+  opsManager    User?                @relation("IncidentOpsManager", fields: [opsManagerId], references: [id], onDelete: SetNull)
+  acknowledgedBy User?               @relation("IncidentAcknowledgedBy", fields: [acknowledgedById], references: [id], onDelete: SetNull)
+  assessedBy    User?                @relation("IncidentAssessedBy", fields: [assessedById], references: [id], onDelete: SetNull)
+  closedBy      User?                @relation("IncidentClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
+  relatedReferral SecurityReferral?  @relation("IncidentFromReferral", fields: [relatedReferralId], references: [id], onDelete: SetNull)
+  relatedPermit SecurityPermit?      @relation("IncidentFromPermit", fields: [relatedPermitId], references: [id], onDelete: SetNull)
+  relatedViolation VehicleViolation? @relation("IncidentFromViolation", fields: [relatedViolationId], references: [id], onDelete: SetNull)
+  attachments   IncidentAttachment[]
+  comments      IncidentComment[]
+  history       IncidentHistory[]
+  responseTimes ResponseTime[]
+  fieldAlerts   FieldAlert[]         @relation("FieldAlertIncident")
+  assignments   IncidentAssignment[]
+  notesList     IncidentNote[]
+  contactLogs   IncidentContactLog[]
+  tasks         IncidentTask[]
+  followUps     IncidentFollowUp[]
+  procedureSteps IncidentProcedureStep[]
+
+  @@index([status])
+  @@index([severity])
+  @@index([source])
+  @@index([typeId])
+  @@index([locationId])
+  @@index([zoneId])
+  @@index([checkpointId])
+  @@index([patrolSessionId])
+  @@index([floorId])
+  @@index([meetingRoomId])
+  @@index([reporterId])
+  @@index([assigneeId])
+  @@index([assignedGroupId])
+  @@index([relatedReferralId])
+  @@index([relatedPermitId])
+  @@index([relatedViolationId])
+  @@index([occurredAt])
+  @@index([deletedAt])
+  @@map("incidents")
+}
+
+model IncidentAttachment {
+  id               String         @id @default(uuid()) @db.Uuid
+  incidentId       String         @db.Uuid
+  fileName         String
+  originalFileName String?
+  mimeType         String
+  fileSize         Int
+  storageKey       String
+  storagePath      String?
+  thumbnailPath    String?
+  localPath        String?
+  description      String?        @db.Text
+  type             AttachmentType @default(DOCUMENT)
+  uploadedById     String?        @db.Uuid
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  deletedAt        DateTime?
+
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  uploadedBy User?    @relation("IncidentAttachmentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([incidentId])
+  @@index([uploadedById])
+  @@index([deletedAt])
+  @@map("incident_attachments")
+}
+
+model IncidentComment {
+  id         String   @id @default(uuid()) @db.Uuid
+  incidentId String   @db.Uuid
+  authorId   String   @db.Uuid
+  body       String   @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deletedAt  DateTime?
+
+  incident Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  author   User     @relation("IncidentCommentAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([incidentId])
+  @@index([authorId])
+  @@index([createdAt])
+  @@map("incident_comments")
+}
+
+model IncidentHistory {
+  id         String                @id @default(uuid()) @db.Uuid
+  incidentId String                @db.Uuid
+  action     IncidentHistoryAction
+  actorId    String?               @db.Uuid
+  fromStatus IncidentStatus?
+  toStatus   IncidentStatus?
+  notes      String?               @db.Text
+  metadata   Json?
+  createdAt  DateTime              @default(now())
+
+  incident Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  actor    User?    @relation("IncidentHistoryActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([incidentId])
+  @@index([actorId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("incident_history")
+}
+
+model Complaint {
+  id          String          @id @default(uuid()) @db.Uuid
+  title       String
+  description String          @db.Text
+  status      ComplaintStatus @default(SUBMITTED)
+  locationId  String?         @db.Uuid
+  submitterId String?         @db.Uuid
+  reviewerId  String?         @db.Uuid
+  reviewedAt  DateTime?
+  reviewNotes String?         @db.Text
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  deletedAt   DateTime?
+
+  location    Location?             @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  submitter   User?                 @relation("ComplaintSubmitter", fields: [submitterId], references: [id], onDelete: SetNull)
+  reviewer    User?                 @relation("ComplaintReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  attachments ComplaintAttachment[]
+
+  @@index([status])
+  @@index([locationId])
+  @@index([submitterId])
+  @@index([reviewerId])
+  @@index([deletedAt])
+  @@map("complaints")
+}
+
+model ComplaintAttachment {
+  id          String         @id @default(uuid()) @db.Uuid
+  complaintId String         @db.Uuid
+  fileName    String
+  mimeType    String
+  fileSize    Int
+  storageKey  String
+  type        AttachmentType @default(DOCUMENT)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  deletedAt   DateTime?
+
+  complaint Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+
+  @@index([complaintId])
+  @@index([deletedAt])
+  @@map("complaint_attachments")
+}
+
+// ─── Notifications & SLA ────────────────────────────────────────
+
+model Notification {
+  id                       String                   @id @default(uuid()) @db.Uuid
+  notificationNumber       String?                  @unique
+  userId                   String                   @db.Uuid
+  senderId                 String?                  @db.Uuid
+  title                    String
+  body                     String                   @db.Text
+  shortBody                String?
+  priority                 NotificationPriority     @default(NORMAL)
+  status                   NotificationStatus       @default(UNREAD)
+  kind                     NotificationKind         @default(INFORMATIONAL)
+  category                 NotificationCategory?
+  channel                  String                   @default("IN_APP")
+  entityType               String?
+  entityId                 String?                  @db.Uuid
+  actionUrl                String?
+  actionType               NotificationActionType   @default(OPEN)
+  requiresAcknowledgement  Boolean                  @default(false)
+  acknowledgedAt           DateTime?
+  acknowledgedById         String?                  @db.Uuid
+  isRead                   Boolean                  @default(false)
+  readAt                   DateTime?
+  deliveredAt              DateTime?
+  scheduledFor             DateTime?
+  expiresAt                DateTime?
+  deduplicationKey         String?
+  escalationLevel          Int                      @default(0)
+  escalatedAt              DateTime?
+  reminderCount            Int                      @default(0)
+  metadataJson             Json?
+  recipientRole            String?
+  recipientGroupId         String?                  @db.Uuid
+  recipientShiftId         String?                  @db.Uuid
+  createdAt                DateTime                 @default(now())
+  updatedAt                DateTime                 @updatedAt
+  deletedAt                DateTime?
+
+  user           User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sender         User?                    @relation("NotificationSender", fields: [senderId], references: [id], onDelete: SetNull)
+  acknowledgedBy User?                    @relation("NotificationAcknowledger", fields: [acknowledgedById], references: [id], onDelete: SetNull)
+  deliveries     NotificationDelivery[]
+
+  @@index([userId, status])
+  @@index([userId, isRead])
+  @@index([priority])
+  @@index([category])
+  @@index([createdAt])
+  @@index([entityType, entityId])
+  @@index([senderId])
+  @@index([deduplicationKey, userId])
+  @@index([requiresAcknowledgement, status])
+  @@index([deletedAt])
+  @@map("notifications")
+}
+
+model Task {
+  id                 String              @id @default(uuid()) @db.Uuid
+  taskNumber         String?             @unique
+  title              String
+  description        String              @db.Text
+  status             TaskStatus          @default(PENDING)
+  priority           TaskPriority        @default(NORMAL)
+  taskType           OperationalTaskType @default(GENERAL)
+  assigneeId         String              @db.Uuid
+  assignerId         String?             @db.Uuid
+  assignedGroupId    String?             @db.Uuid
+  assignedAt         DateTime?
+  acceptedAt         DateTime?
+  startedAt          DateTime?
+  dueAt              DateTime?
+  completedAt        DateTime?
+  completedById      String?             @db.Uuid
+  completionNotes    String?             @db.Text
+  rejectionReason    String?             @db.Text
+  cancelledAt        DateTime?
+  cancellationReason String?             @db.Text
+  requiresEvidence   Boolean             @default(false)
+  entityType         String?
+  entityId           String?             @db.Uuid
+  sourceType         String?
+  sourceId           String?             @db.Uuid
+  createdById        String?             @db.Uuid
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  deletedAt          DateTime?
+
+  assignee      User           @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: Restrict)
+  assigner      User?          @relation("TaskAssigner", fields: [assignerId], references: [id], onDelete: SetNull)
+  completedBy   User?          @relation("TaskCompleter", fields: [completedById], references: [id], onDelete: SetNull)
+  createdBy     User?          @relation("TaskCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  assignedGroup ShiftGroup?    @relation("TaskAssignedGroup", fields: [assignedGroupId], references: [id], onDelete: SetNull)
+  updates       TaskUpdate[]
+  evidences     TaskEvidence[]
+
+  @@index([assigneeId, status])
+  @@index([assignedGroupId])
+  @@index([status])
+  @@index([priority])
+  @@index([taskType])
+  @@index([dueAt])
+  @@index([deletedAt])
+  @@map("tasks")
+}
+
+model ResponseTime {
+  id          String    @id @default(uuid()) @db.Uuid
+  violationId String?   @db.Uuid
+  incidentId  String?   @db.Uuid
+  actorId     String?   @db.Uuid
+  startedAt   DateTime
+  endedAt     DateTime?
+  durationMs  Int?
+  metricKey   String
+  notes       String?   @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  violation VehicleViolation? @relation(fields: [violationId], references: [id], onDelete: Cascade)
+  incident  Incident?         @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  actor     User?             @relation("ResponseTimeActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([violationId])
+  @@index([incidentId])
+  @@index([actorId])
+  @@index([metricKey])
+  @@index([startedAt])
+  @@map("response_times")
+}
+
+// ─── Audit, settings, stats ─────────────────────────────────────
+
+model AuditLog {
+  id            String         @id @default(uuid()) @db.Uuid
+  actorId       String?        @db.Uuid
+  action        AuditAction
+  entityType    String
+  entityId      String?        @db.Uuid
+  module        String?
+  description   String?        @db.Text
+  oldValues     Json?
+  newValues     Json?
+  metadata      Json?
+  ipAddress     String?
+  userAgent     String?
+  requestId     String?
+  severity      AuditSeverity  @default(INFO)
+  success       Boolean        @default(true)
+  failureReason String?        @db.Text
+  createdAt     DateTime       @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([module])
+  @@index([severity])
+  @@index([success])
+  @@index([requestId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model SystemSetting {
+  id          String    @id @default(uuid()) @db.Uuid
+  key         String    @unique
+  value       Json
+  description String?   @db.Text
+  isPublic    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([deletedAt])
+  @@map("system_settings")
+}
+
+model Statistic {
+  id         String   @id @default(uuid()) @db.Uuid
+  metricKey  String
+  dimension  Json?
+  value      Decimal  @db.Decimal(18, 4)
+  recordedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([metricKey, recordedAt])
+  @@index([recordedAt])
+  @@map("statistics")
+}
+
+// ─── Sprint 15: Field Operations & Security Map ─────────────────
+
+enum SecurityZoneType {
+  BUILDING
+  FLOOR
+  HALL
+  OFFICE
+  PARKING
+  ENTRANCE
+  EXIT
+  SECURITY_POINT
+  CCTV_AREA
+  RESTRICTED_AREA
+  OTHER
+}
+
+enum CheckpointType {
+  ENTRANCE
+  EXIT
+  FLOOR_POINT
+  PARKING_POINT
+  CAMERA_POINT
+  FIRE_EXIT
+  RESTRICTED_POINT
+  GENERAL
+}
+
+enum PatrolSessionStatus {
+  SCHEDULED
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  LATE
+  MISSED
+  CANCELLED
+}
+
+enum PatrolVerificationMethod {
+  MANUAL
+  QR_CODE
+  NFC
+  SUPERVISOR_CONFIRMATION
+}
+
+enum PatrolVisitStatus {
+  VERIFIED
+  SKIPPED
+  FAILED
+  OUT_OF_ORDER
+}
+
+enum PersonnelLocationSource {
+  MOBILE
+  MANUAL
+  CHECKPOINT
+  INCIDENT
+  SUPERVISOR
+}
+
+enum FieldAlertType {
+  SOS
+  PATROL_DELAY
+  CHECKPOINT_MISSED
+  RESTRICTED_AREA
+  OFFLINE_USER
+  INCIDENT_NEARBY
+  SECURITY_NOTICE
+  OTHER
+}
+
+enum FieldAlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum FieldAlertStatus {
+  NEW
+  ACKNOWLEDGED
+  IN_PROGRESS
+  RESOLVED
+  CANCELLED
+}
+
+model SecurityZone {
+  id          String           @id @default(uuid()) @db.Uuid
+  name        String
+  code        String           @unique
+  description String?          @db.Text
+  zoneType    SecurityZoneType
+  parentId    String?          @db.Uuid
+  floorNumber Int?
+  mapX        Float            @default(0)
+  mapY        Float            @default(0)
+  width       Float            @default(100)
+  height      Float            @default(80)
+  color       String           @default("#0f766e")
+  isActive    Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  parent       SecurityZone?  @relation("ZoneTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children     SecurityZone[] @relation("ZoneTree")
+  checkpoints  SecurityCheckpoint[]
+  personnelLocations PersonnelLocation[]
+  fieldAlerts  FieldAlert[]
+  incidents    Incident[]     @relation("IncidentZone")
+  violations   VehicleViolation[] @relation("ViolationZone")
+  securityPermits SecurityPermit[]
+  securityReferrals SecurityReferral[]
+  savedReports SavedReport[] @relation("SavedReportZone")
+
+  @@index([parentId])
+  @@index([zoneType])
+  @@index([isActive])
+  @@map("security_zones")
+}
+
+model SecurityCheckpoint {
+  id                String          @id @default(uuid()) @db.Uuid
+  name              String
+  code              String          @unique
+  description       String?         @db.Text
+  zoneId            String          @db.Uuid
+  latitude          Float?
+  longitude         Float?
+  mapX              Float           @default(0)
+  mapY              Float           @default(0)
+  checkpointType    CheckpointType  @default(GENERAL)
+  qrCodeValue        String          @unique
+  nfcTagValue       String?
+  requiredForPatrol Boolean         @default(true)
+  isActive          Boolean         @default(true)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  zone           SecurityZone            @relation(fields: [zoneId], references: [id], onDelete: Restrict)
+  routePoints    PatrolRouteCheckpoint[]
+  visits         PatrolCheckpointVisit[]
+  incidents      Incident[]              @relation("IncidentCheckpoint")
+  violations     VehicleViolation[]      @relation("ViolationCheckpoint")
+  securityReferrals SecurityReferral[]
+
+  @@index([zoneId])
+  @@index([checkpointType])
+  @@index([isActive])
+  @@map("security_checkpoints")
+}
+
+model PatrolRoute {
+  id                       String   @id @default(uuid()) @db.Uuid
+  name                     String
+  description              String?  @db.Text
+  shiftType                String?
+  groupId                  String?  @db.Uuid
+  estimatedDurationMinutes Int      @default(60)
+  isActive                 Boolean  @default(true)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  group       ShiftGroup?             @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  checkpoints PatrolRouteCheckpoint[]
+  sessions    PatrolSession[]
+
+  @@index([groupId])
+  @@index([isActive])
+  @@map("patrol_routes")
+}
+
+model PatrolRouteCheckpoint {
+  id                      String   @id @default(uuid()) @db.Uuid
+  routeId                 String   @db.Uuid
+  checkpointId            String   @db.Uuid
+  orderIndex              Int
+  expectedMinutesFromStart Int     @default(0)
+  isRequired              Boolean  @default(true)
+  instructions            String?  @db.Text
+  createdAt               DateTime @default(now())
+
+  route      PatrolRoute        @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  checkpoint SecurityCheckpoint @relation(fields: [checkpointId], references: [id], onDelete: Restrict)
+
+  @@unique([routeId, checkpointId])
+  @@unique([routeId, orderIndex])
+  @@index([checkpointId])
+  @@map("patrol_route_checkpoints")
+}
+
+model PatrolSession {
+  id                 String              @id @default(uuid()) @db.Uuid
+  routeId            String              @db.Uuid
+  assignedUserId     String?             @db.Uuid
+  assignedById       String?             @db.Uuid
+  shiftSessionId     String?             @db.Uuid
+  groupId            String?             @db.Uuid
+  status             PatrolSessionStatus @default(SCHEDULED)
+  scheduledStartAt   DateTime
+  startedAt          DateTime?
+  completedAt        DateTime?
+  cancelledAt        DateTime?
+  cancellationReason String?             @db.Text
+  notes              String?             @db.Text
+  priority           Int                 @default(100)
+  overrideRestingGroup Boolean           @default(false)
+  overrideReason     String?             @db.Text
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  route         PatrolRoute             @relation(fields: [routeId], references: [id], onDelete: Restrict)
+  assignedUser  User?                   @relation("PatrolSessionAssignee", fields: [assignedUserId], references: [id], onDelete: SetNull)
+  assignedBy    User?                   @relation("PatrolSessionAssigner", fields: [assignedById], references: [id], onDelete: SetNull)
+  shiftSession  ShiftSession?            @relation(fields: [shiftSessionId], references: [id], onDelete: SetNull)
+  group         ShiftGroup?             @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  visits        PatrolCheckpointVisit[]
+  incidents     Incident[]              @relation("IncidentPatrolSession")
+  fieldAlerts   FieldAlert[]
+
+  @@index([routeId])
+  @@index([assignedUserId])
+  @@index([status])
+  @@index([scheduledStartAt])
+  @@index([groupId])
+  @@map("patrol_sessions")
+}
+
+model PatrolCheckpointVisit {
+  id                String                   @id @default(uuid()) @db.Uuid
+  patrolSessionId   String                   @db.Uuid
+  checkpointId      String                   @db.Uuid
+  visitedById       String                   @db.Uuid
+  visitedAt         DateTime                 @default(now())
+  verificationMethod PatrolVerificationMethod @default(MANUAL)
+  mapX              Float?
+  mapY              Float?
+  notes             String?                  @db.Text
+  attachmentUrl     String?
+  status            PatrolVisitStatus        @default(VERIFIED)
+  clientSyncId      String?                  @unique
+  createdAt         DateTime                 @default(now())
+
+  patrolSession PatrolSession      @relation(fields: [patrolSessionId], references: [id], onDelete: Cascade)
+  checkpoint    SecurityCheckpoint @relation(fields: [checkpointId], references: [id], onDelete: Restrict)
+  visitedBy     User               @relation("PatrolVisitActor", fields: [visitedById], references: [id], onDelete: Restrict)
+
+  @@unique([patrolSessionId, checkpointId])
+  @@index([patrolSessionId])
+  @@index([checkpointId])
+  @@index([visitedById])
+  @@index([visitedAt])
+  @@map("patrol_checkpoint_visits")
+}
+
+model PersonnelLocation {
+  id         String                   @id @default(uuid()) @db.Uuid
+  userId     String                   @db.Uuid
+  zoneId     String?                  @db.Uuid
+  mapX       Float
+  mapY       Float
+  accuracy   Float?
+  source     PersonnelLocationSource  @default(MOBILE)
+  recordedAt DateTime                 @default(now())
+  expiresAt  DateTime?
+  isCurrent  Boolean                  @default(true)
+
+  user User          @relation("PersonnelLocations", fields: [userId], references: [id], onDelete: Cascade)
+  zone SecurityZone? @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+
+  @@index([userId, isCurrent])
+  @@index([userId, recordedAt])
+  @@index([zoneId])
+  @@index([recordedAt])
+  @@map("personnel_locations")
+}
+
+model FieldAlert {
+  id              String            @id @default(uuid()) @db.Uuid
+  title           String
+  description     String            @db.Text
+  alertType       FieldAlertType
+  severity        FieldAlertSeverity @default(MEDIUM)
+  zoneId          String?           @db.Uuid
+  assignedUserId  String?           @db.Uuid
+  assignedGroupId String?           @db.Uuid
+  incidentId      String?           @db.Uuid
+  patrolSessionId String?           @db.Uuid
+  mapX            Float?
+  mapY            Float?
+  status          FieldAlertStatus  @default(NEW)
+  acknowledgedAt  DateTime?
+  resolvedAt      DateTime?
+  resolutionNote  String?           @db.Text
+  createdById     String            @db.Uuid
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  zone           SecurityZone?  @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  assignedUser   User?          @relation("FieldAlertAssignee", fields: [assignedUserId], references: [id], onDelete: SetNull)
+  assignedGroup  ShiftGroup?    @relation(fields: [assignedGroupId], references: [id], onDelete: SetNull)
+  incident       Incident?      @relation("FieldAlertIncident", fields: [incidentId], references: [id], onDelete: SetNull)
+  patrolSession  PatrolSession? @relation(fields: [patrolSessionId], references: [id], onDelete: SetNull)
+  createdBy      User           @relation("FieldAlertCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([status])
+  @@index([severity])
+  @@index([alertType])
+  @@index([assignedUserId])
+  @@index([zoneId])
+  @@index([patrolSessionId])
+  @@index([createdAt])
+  @@map("field_alerts")
+}
+
+// ─── Sprint 16: CCTV Operator Operations & Security Referrals ───
+
+enum SecurityPermitType {
+  VISITOR
+  VEHICLE
+  CONTRACTOR
+  MAINTENANCE
+  DELIVERY
+  TEMPORARY_ACCESS
+  VIP
+  OTHER
+}
+
+enum SecurityPermitStatus {
+  DRAFT
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  USED
+  REJECTED
+}
+
+enum PermitImportance {
+  NORMAL
+  IMPORTANT
+  URGENT
+}
+
+enum PermitShareStatus {
+  SENT
+  DELIVERED
+  VIEWED
+  ACKNOWLEDGED
+  FAILED
+}
+
+enum SecurityReferralType {
+  SUSPICIOUS_PERSON
+  SUSPICIOUS_VEHICLE
+  PARKING_VIOLATION
+  UNAUTHORIZED_ACCESS
+  DOOR_OPEN
+  CROWDING
+  SAFETY_RISK
+  LOST_ITEM
+  PROPERTY_DAMAGE
+  SECURITY_OBSERVATION
+  OTHER
+}
+
+enum SecurityReferralSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum SecurityReferralStatus {
+  NEW
+  SENT
+  RECEIVED
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+  REJECTED
+  CANCELLED
+  ESCALATED
+}
+
+enum ReferralAttachmentType {
+  IMAGE
+  SCREENSHOT
+  DOCUMENT
+  VIDEO_SHORT
+  OTHER
+}
+
+enum ReferralUpdateType {
+  CREATED
+  SENT
+  RECEIVED
+  STATUS_CHANGED
+  NOTE_ADDED
+  ASSIGNED
+  REASSIGNED
+  ARRIVED
+  RESOLVED
+  ESCALATED
+  REJECTED
+  CANCELLED
+  CLOSED
+  ATTACHMENT_ADDED
+}
+
+enum ReferralResponseType {
+  ACKNOWLEDGEMENT
+  FIELD_UPDATE
+  RESOLUTION
+  REJECTION
+  REQUEST_MORE_INFO
+}
+
+model SecurityPermit {
+  id              String               @id @default(uuid()) @db.Uuid
+  permitNumber    String               @unique
+  permitType      SecurityPermitType
+  title           String
+  holderName      String
+  nationalId      String?
+  employeeNumber  String?
+  companyName     String?
+  vehiclePlate    String?
+  vehicleType     String?
+  hostName        String?
+  hostDepartment  String?
+  allowedZoneId   String?              @db.Uuid
+  allowedFloor    String?
+  validFrom       DateTime
+  validTo         DateTime
+  status          SecurityPermitStatus @default(DRAFT)
+  importance      PermitImportance     @default(NORMAL)
+  notes           String?              @db.Text
+  attachmentUrl   String?
+  attachmentStoragePath String?
+  attachmentFileName String?
+  attachmentMimeType String?
+  attachmentFileSize Int?
+  cancelReason    String?              @db.Text
+  rejectReason    String?              @db.Text
+  createdById     String               @db.Uuid
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  deletedAt       DateTime?
+
+  allowedZone SecurityZone? @relation(fields: [allowedZoneId], references: [id], onDelete: SetNull)
+  createdBy   User          @relation("SecurityPermitCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  shares      PermitShare[]
+  linkedIncidents Incident[] @relation("IncidentFromPermit")
+
+  @@index([status])
+  @@index([permitType])
+  @@index([importance])
+  @@index([createdById])
+  @@index([validFrom, validTo])
+  @@index([vehiclePlate])
+  @@index([deletedAt])
+  @@map("security_permits")
+}
+
+model PermitShare {
+  id                String            @id @default(uuid()) @db.Uuid
+  permitId          String            @db.Uuid
+  sharedById        String            @db.Uuid
+  sharedWithUserId  String?           @db.Uuid
+  sharedWithGroupId String?           @db.Uuid
+  sharedWithRole    String?
+  checkpointId      String?           @db.Uuid
+  message           String?           @db.Text
+  sentAt            DateTime          @default(now())
+  deliveredAt       DateTime?
+  receivedAt        DateTime?
+  viewedAt          DateTime?
+  status            PermitShareStatus @default(SENT)
+  createdAt         DateTime          @default(now())
+
+  permit          SecurityPermit @relation(fields: [permitId], references: [id], onDelete: Cascade)
+  sharedBy        User           @relation("PermitShareSender", fields: [sharedById], references: [id], onDelete: Restrict)
+  sharedWithUser  User?          @relation("PermitShareRecipient", fields: [sharedWithUserId], references: [id], onDelete: SetNull)
+  sharedWithGroup ShiftGroup?    @relation(fields: [sharedWithGroupId], references: [id], onDelete: SetNull)
+
+  @@index([permitId])
+  @@index([sharedWithUserId])
+  @@index([sharedWithGroupId])
+  @@index([status])
+  @@index([sentAt])
+  @@map("permit_shares")
+}
+
+model SecurityReferral {
+  id                 String                   @id @default(uuid()) @db.Uuid
+  referralNumber     String                   @unique
+  title              String
+  description        String                   @db.Text
+  referralType       SecurityReferralType
+  severity           SecurityReferralSeverity @default(MEDIUM)
+  status             SecurityReferralStatus   @default(NEW)
+  zoneId             String?                  @db.Uuid
+  checkpointId       String?                  @db.Uuid
+  floorNumber        Int?
+  cameraCode         String?
+  occurredAt         DateTime                 @default(now())
+  createdById        String                   @db.Uuid
+  assignedUserId     String?                  @db.Uuid
+  assignedGroupId    String?                  @db.Uuid
+  assignedById       String?                  @db.Uuid
+  assignedAt         DateTime?
+  receivedAt         DateTime?
+  startedAt          DateTime?
+  arrivedAt          DateTime?
+  resolvedAt         DateTime?
+  closedAt           DateTime?
+  rejectedAt         DateTime?
+  cancelledAt        DateTime?
+  escalationLevel    Int                      @default(0)
+  escalatedAt        DateTime?
+  escalationReason   String?                  @db.Text
+  resolutionSummary  String?                  @db.Text
+  rejectionReason    String?                  @db.Text
+  cancellationReason String?                  @db.Text
+  needsFollowUp      Boolean                  @default(false)
+  notes              String?                  @db.Text
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+  deletedAt          DateTime?
+
+  zone          SecurityZone?               @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  checkpoint    SecurityCheckpoint?         @relation(fields: [checkpointId], references: [id], onDelete: SetNull)
+  createdBy     User                        @relation("SecurityReferralCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  assignedUser  User?                       @relation("SecurityReferralAssignee", fields: [assignedUserId], references: [id], onDelete: SetNull)
+  assignedGroup ShiftGroup?                 @relation(fields: [assignedGroupId], references: [id], onDelete: SetNull)
+  assignedBy    User?                       @relation("SecurityReferralAssigner", fields: [assignedById], references: [id], onDelete: SetNull)
+  attachments   SecurityReferralAttachment[]
+  updates       SecurityReferralUpdate[]
+  responses     ReferralResponse[]
+  linkedIncidents Incident[]                @relation("IncidentFromReferral")
+
+  @@index([status])
+  @@index([severity])
+  @@index([referralType])
+  @@index([createdById])
+  @@index([assignedUserId])
+  @@index([assignedGroupId])
+  @@index([zoneId])
+  @@index([occurredAt])
+  @@index([deletedAt])
+  @@map("security_referrals")
+}
+
+model SecurityReferralAttachment {
+  id               String                 @id @default(uuid()) @db.Uuid
+  referralId       String                 @db.Uuid
+  attachmentType   ReferralAttachmentType @default(IMAGE)
+  fileName         String
+  originalFileName String
+  mimeType         String
+  fileSize         Int
+  storagePath      String
+  thumbnailPath    String?
+  uploadedById     String                 @db.Uuid
+  description      String?                @db.Text
+  createdAt        DateTime               @default(now())
+  deletedAt        DateTime?
+
+  referral   SecurityReferral         @relation(fields: [referralId], references: [id], onDelete: Cascade)
+  uploadedBy User                     @relation("SecurityReferralAttachmentUploader", fields: [uploadedById], references: [id], onDelete: Restrict)
+  updates    SecurityReferralUpdate[]
+
+  @@index([referralId])
+  @@index([uploadedById])
+  @@index([deletedAt])
+  @@map("security_referral_attachments")
+}
+
+model SecurityReferralUpdate {
+  id           String             @id @default(uuid()) @db.Uuid
+  referralId   String             @db.Uuid
+  userId       String             @db.Uuid
+  updateType   ReferralUpdateType
+  message      String?            @db.Text
+  oldStatus    SecurityReferralStatus?
+  newStatus    SecurityReferralStatus?
+  attachmentId String?            @db.Uuid
+  createdAt    DateTime           @default(now())
+
+  referral   SecurityReferral            @relation(fields: [referralId], references: [id], onDelete: Cascade)
+  user       User                        @relation("SecurityReferralUpdateAuthor", fields: [userId], references: [id], onDelete: Restrict)
+  attachment SecurityReferralAttachment? @relation(fields: [attachmentId], references: [id], onDelete: SetNull)
+
+  @@index([referralId, createdAt])
+  @@index([userId])
+  @@map("security_referral_updates")
+}
+
+model ReferralResponse {
+  id             String               @id @default(uuid()) @db.Uuid
+  referralId     String               @db.Uuid
+  responderId    String               @db.Uuid
+  responseType   ReferralResponseType
+  result         String
+  notes          String?              @db.Text
+  attachmentUrl  String?
+  respondedAt    DateTime             @default(now())
+  createdAt      DateTime             @default(now())
+
+  referral  SecurityReferral @relation(fields: [referralId], references: [id], onDelete: Cascade)
+  responder User             @relation("ReferralResponder", fields: [responderId], references: [id], onDelete: Restrict)
+
+  @@index([referralId])
+  @@index([responderId])
+  @@index([respondedAt])
+  @@map("referral_responses")
+}
+
+// ─── Sprint 17: Incidents, Emergencies & Operations Room ───
+
+model IncidentAssignment {
+  id               String                 @id @default(uuid()) @db.Uuid
+  incidentId       String                 @db.Uuid
+  assignedUserId   String?                @db.Uuid
+  assignedGroupId  String?                @db.Uuid
+  assignedRole     String?
+  assignedById     String                 @db.Uuid
+  assignmentType   IncidentAssignmentType @default(PRIMARY)
+  reason           String?                @db.Text
+  assignedAt       DateTime               @default(now())
+  acceptedAt       DateTime?
+  rejectedAt       DateTime?
+  rejectionReason  String?                @db.Text
+  endedAt          DateTime?
+  createdAt        DateTime               @default(now())
+
+  incident      Incident    @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  assignedUser  User?       @relation("IncidentAssignmentAssignee", fields: [assignedUserId], references: [id], onDelete: SetNull)
+  assignedGroup ShiftGroup? @relation(fields: [assignedGroupId], references: [id], onDelete: SetNull)
+  assignedBy    User        @relation("IncidentAssignmentAssigner", fields: [assignedById], references: [id], onDelete: Restrict)
+
+  @@index([incidentId])
+  @@index([assignedUserId])
+  @@index([assignedGroupId])
+  @@index([assignedAt])
+  @@map("incident_assignments")
+}
+
+model IncidentNote {
+  id         String                 @id @default(uuid()) @db.Uuid
+  incidentId String                 @db.Uuid
+  noteType   IncidentNoteType       @default(GENERAL)
+  content    String                 @db.Text
+  visibility IncidentNoteVisibility @default(ALL_AUTHORIZED)
+  createdById String                @db.Uuid
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+  deletedAt  DateTime?
+
+  incident  Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  createdBy User     @relation("IncidentNoteAuthor", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([incidentId])
+  @@index([createdById])
+  @@index([visibility])
+  @@index([deletedAt])
+  @@map("incident_notes")
+}
+
+model IncidentContactLog {
+  id                 String              @id @default(uuid()) @db.Uuid
+  incidentId         String              @db.Uuid
+  contactType        IncidentContactType
+  organizationName   String?
+  contactPerson      String?
+  phoneNumberMasked  String?
+  contactedById      String              @db.Uuid
+  contactedAt        DateTime            @default(now())
+  result             String              @db.Text
+  referenceNumber    String?
+  notes              String?             @db.Text
+  createdAt          DateTime            @default(now())
+
+  incident    Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  contactedBy User     @relation("IncidentContactActor", fields: [contactedById], references: [id], onDelete: Restrict)
+
+  @@index([incidentId])
+  @@index([contactedById])
+  @@index([contactedAt])
+  @@map("incident_contact_logs")
+}
+
+model IncidentTask {
+  id               String             @id @default(uuid()) @db.Uuid
+  incidentId       String             @db.Uuid
+  title            String
+  description      String?            @db.Text
+  assignedUserId   String?            @db.Uuid
+  assignedGroupId  String?            @db.Uuid
+  priority         IncidentSeverity   @default(MEDIUM)
+  status           IncidentTaskStatus @default(PENDING)
+  dueAt            DateTime?
+  startedAt        DateTime?
+  completedAt      DateTime?
+  completedById    String?            @db.Uuid
+  completionNotes  String?            @db.Text
+  createdById      String             @db.Uuid
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  deletedAt        DateTime?
+
+  incident      Incident    @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  assignedUser  User?       @relation("IncidentTaskAssignee", fields: [assignedUserId], references: [id], onDelete: SetNull)
+  assignedGroup ShiftGroup? @relation(fields: [assignedGroupId], references: [id], onDelete: SetNull)
+  completedBy   User?       @relation("IncidentTaskCompleter", fields: [completedById], references: [id], onDelete: SetNull)
+  createdBy     User        @relation("IncidentTaskCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([incidentId])
+  @@index([assignedUserId])
+  @@index([status])
+  @@index([dueAt])
+  @@index([deletedAt])
+  @@map("incident_tasks")
+}
+
+model EmergencyProcedure {
+  id               String            @id @default(uuid()) @db.Uuid
+  name             String
+  code             String            @unique
+  incidentTypeCode String
+  severity         IncidentSeverity?
+  description      String            @db.Text
+  instructionsJson Json
+  isActive         Boolean           @default(true)
+  version          Int               @default(1)
+  createdById      String            @db.Uuid
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  deletedAt        DateTime?
+
+  createdBy User @relation("EmergencyProcedureCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  steps     IncidentProcedureStep[]
+
+  @@index([incidentTypeCode])
+  @@index([isActive])
+  @@index([deletedAt])
+  @@map("emergency_procedures")
+}
+
+model IncidentProcedureStep {
+  id            String    @id @default(uuid()) @db.Uuid
+  incidentId    String    @db.Uuid
+  procedureId   String    @db.Uuid
+  stepIndex     Int
+  stepTitle     String
+  isCompleted   Boolean   @default(false)
+  completedAt   DateTime?
+  completedById String?   @db.Uuid
+  notes         String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  incident    Incident           @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  procedure   EmergencyProcedure @relation(fields: [procedureId], references: [id], onDelete: Restrict)
+  completedBy User?              @relation("IncidentProcedureStepCompleter", fields: [completedById], references: [id], onDelete: SetNull)
+
+  @@unique([incidentId, procedureId, stepIndex])
+  @@index([incidentId])
+  @@index([procedureId])
+  @@map("incident_procedure_steps")
+}
+
+model IncidentFollowUp {
+  id           String                 @id @default(uuid()) @db.Uuid
+  incidentId   String                 @db.Uuid
+  title        String
+  description  String                 @db.Text
+  assignedToId String?                @db.Uuid
+  dueAt        DateTime
+  status       IncidentFollowUpStatus @default(OPEN)
+  result       String?                @db.Text
+  completedAt  DateTime?
+  createdById  String                 @db.Uuid
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  deletedAt    DateTime?
+
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  assignedTo User?    @relation("IncidentFollowUpAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdBy  User     @relation("IncidentFollowUpCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([incidentId])
+  @@index([assignedToId])
+  @@index([status])
+  @@index([dueAt])
+  @@index([deletedAt])
+  @@map("incident_follow_ups")
+}
+
+// ─── Sprint 18: Security Reports, Audit Log & KPIs ───
+
+enum SavedReportType {
+  DAILY_SECURITY
+  SHIFT_REPORT
+  HANDOVER_REPORT
+  INCIDENT_REPORT
+  EMERGENCY_REPORT
+  PATROL_REPORT
+  CHECKPOINT_REPORT
+  CCTV_REFERRAL_REPORT
+  PERMIT_REPORT
+  VISITOR_REPORT
+  VEHICLE_VIOLATION_REPORT
+  RESPONSE_TIME_REPORT
+  PERSONNEL_PERFORMANCE
+  GROUP_PERFORMANCE
+  SHIFT_PERFORMANCE
+  LOCATION_ANALYSIS
+  AUDIT_REPORT
+  CUSTOM
+}
+
+enum SavedReportStatus {
+  DRAFT
+  GENERATED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  ARCHIVED
+  FAILED
+}
+
+enum ReportClassification {
+  INTERNAL
+  CONFIDENTIAL
+  HIGHLY_CONFIDENTIAL
+}
+
+enum ReportSectionType {
+  SUMMARY
+  KPI
+  TABLE
+  CHART
+  TEXT
+  TIMELINE
+  RECOMMENDATIONS
+  SIGNATURES
+  ATTACHMENTS_LIST
+}
+
+enum ReportApprovalAction {
+  SUBMITTED
+  APPROVED
+  REJECTED
+  RETURNED_FOR_EDIT
+  ARCHIVED
+}
+
+enum ReportScheduleFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  END_OF_SHIFT
+}
+
+enum ReportAccessAction {
+  VIEW
+  GENERATE
+  DOWNLOAD_PDF
+  DOWNLOAD_CSV
+  PRINT
+  SUBMIT_FOR_APPROVAL
+  APPROVE
+  REJECT
+  ARCHIVE
+}
+
+model SavedReport {
+  id               String               @id @default(uuid()) @db.Uuid
+  reportNumber     String
+  title            String
+  description      String?              @db.Text
+  reportType       SavedReportType
+  status           SavedReportStatus    @default(DRAFT)
+  dateFrom         DateTime
+  dateTo           DateTime
+  shiftType        String?
+  groupId          String?              @db.Uuid
+  zoneId           String?              @db.Uuid
+  userId           String?              @db.Uuid
+  filtersJson      Json?
+  summaryJson      Json?
+  notes            String?              @db.Text
+  recommendations  String?              @db.Text
+  generatedById    String               @db.Uuid
+  generatedAt      DateTime             @default(now())
+  approvedById     String?              @db.Uuid
+  approvedAt       DateTime?
+  approvalNotes    String?              @db.Text
+  classification   ReportClassification @default(INTERNAL)
+  version          Int                  @default(1)
+  parentReportId   String?              @db.Uuid
+  filePath         String?
+  fileMimeType     String?
+  fileSize         Int?
+  checksumSha256   String?
+  csvPath          String?
+  deletedAt        DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  generatedBy User          @relation("SavedReportGenerator", fields: [generatedById], references: [id], onDelete: Restrict)
+  approvedBy  User?         @relation("SavedReportApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  group       ShiftGroup?   @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  zone        SecurityZone? @relation("SavedReportZone", fields: [zoneId], references: [id], onDelete: SetNull)
+  subjectUser User?         @relation("SavedReportSubject", fields: [userId], references: [id], onDelete: SetNull)
+  parent      SavedReport?  @relation("SavedReportVersions", fields: [parentReportId], references: [id], onDelete: SetNull)
+  versions    SavedReport[] @relation("SavedReportVersions")
+  sections    ReportSection[]
+  approvals   ReportApproval[]
+  accessLogs  ReportAccessLog[]
+
+  @@unique([reportNumber, version])
+  @@index([reportType])
+  @@index([status])
+  @@index([generatedById])
+  @@index([approvedById])
+  @@index([dateFrom, dateTo])
+  @@index([classification])
+  @@index([deletedAt])
+  @@map("saved_reports")
+}
+
+model ReportSection {
+  id           String            @id @default(uuid()) @db.Uuid
+  reportId     String            @db.Uuid
+  sectionKey   String
+  title        String
+  sectionType  ReportSectionType
+  orderIndex   Int               @default(0)
+  contentJson  Json?
+  textContent  String?           @db.Text
+  isVisible    Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  report SavedReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId, orderIndex])
+  @@map("report_sections")
+}
+
+model ReportApproval {
+  id         String               @id @default(uuid()) @db.Uuid
+  reportId   String               @db.Uuid
+  approverId String               @db.Uuid
+  action     ReportApprovalAction
+  notes      String?              @db.Text
+  createdAt  DateTime             @default(now())
+
+  report   SavedReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  approver User        @relation("ReportApprovalActor", fields: [approverId], references: [id], onDelete: Restrict)
+
+  @@index([reportId])
+  @@index([approverId])
+  @@index([createdAt])
+  @@map("report_approvals")
+}
+
+model ReportSchedule {
+  id             String                   @id @default(uuid()) @db.Uuid
+  name           String
+  reportType     SavedReportType
+  frequency      ReportScheduleFrequency
+  timeOfDay      String
+  dayOfWeek      Int?
+  dayOfMonth     Int?
+  shiftType      String?
+  groupId        String?                  @db.Uuid
+  filtersJson    Json?
+  recipientsJson Json?
+  generatePdf    Boolean                  @default(true)
+  generateCsv    Boolean                  @default(false)
+  isActive       Boolean                  @default(true)
+  lastRunAt      DateTime?
+  nextRunAt      DateTime?
+  createdById    String                   @db.Uuid
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  deletedAt      DateTime?
+
+  createdBy User        @relation("ReportScheduleCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  group     ShiftGroup? @relation("ReportScheduleGroup", fields: [groupId], references: [id], onDelete: SetNull)
+
+  @@index([reportType])
+  @@index([isActive])
+  @@index([nextRunAt])
+  @@index([deletedAt])
+  @@map("report_schedules")
+}
+
+model ReportAccessLog {
+  id         String             @id @default(uuid()) @db.Uuid
+  reportId   String             @db.Uuid
+  userId     String             @db.Uuid
+  action     ReportAccessAction
+  reason     String?            @db.Text
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime           @default(now())
+
+  report SavedReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  user   User        @relation("ReportAccessActor", fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([reportId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("report_access_logs")
+}
+
+// ─── Sprint 19: Notifications, Communications & Tasks ───
+
+model NotificationDelivery {
+  id             String                      @id @default(uuid()) @db.Uuid
+  notificationId String                      @db.Uuid
+  userId         String                      @db.Uuid
+  channel        NotificationDeliveryChannel
+  status         NotificationDeliveryStatus  @default(PENDING)
+  attemptedAt    DateTime                    @default(now())
+  deliveredAt    DateTime?
+  failureReason  String?                     @db.Text
+  retryCount     Int                         @default(0)
+  createdAt      DateTime                    @default(now())
+  updatedAt      DateTime                    @updatedAt
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([notificationId])
+  @@index([userId])
+  @@index([channel, status])
+  @@map("notification_deliveries")
+}
+
+model NotificationPreference {
+  id                 String               @id @default(uuid()) @db.Uuid
+  userId             String               @db.Uuid
+  category           NotificationCategory
+  inAppEnabled       Boolean              @default(true)
+  socketEnabled      Boolean              @default(true)
+  pushEnabled        Boolean              @default(false)
+  soundEnabled       Boolean              @default(false)
+  quietHoursEnabled  Boolean              @default(false)
+  quietHoursFrom     String?
+  quietHoursTo       String?
+  minimumPriority    NotificationPriority @default(LOW)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, category])
+  @@index([userId])
+  @@map("notification_preferences")
+}
+
+model NotificationRule {
+  id                       String               @id @default(uuid()) @db.Uuid
+  name                     String
+  eventType                String
+  category                 NotificationCategory
+  minimumSeverity          String?
+  targetRolesJson          Json?
+  targetGroupsJson         Json?
+  notificationPriority     NotificationPriority @default(NORMAL)
+  requiresAcknowledgement  Boolean              @default(false)
+  reminderAfterMinutes     Int?
+  escalationAfterMinutes   Int?
+  maxReminders             Int                  @default(2)
+  isActive                 Boolean              @default(true)
+  createdById              String               @db.Uuid
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+  deletedAt                DateTime?
+
+  createdBy User @relation("NotificationRuleCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([eventType])
+  @@index([category])
+  @@index([isActive])
+  @@index([deletedAt])
+  @@map("notification_rules")
+}
+
+model InternalConversation {
+  id                   String           @id @default(uuid()) @db.Uuid
+  conversationNumber   String           @unique
+  title                String?
+  conversationType     ConversationType
+  entityType           String?
+  entityId             String?          @db.Uuid
+  createdById          String           @db.Uuid
+  isClosed             Boolean          @default(false)
+  closedAt             DateTime?
+  closedById           String?          @db.Uuid
+  lastMessageAt        DateTime?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  deletedAt            DateTime?
+
+  createdBy    User                      @relation("ConversationCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  closedBy     User?                     @relation("ConversationCloser", fields: [closedById], references: [id], onDelete: SetNull)
+  participants ConversationParticipant[]
+  messages     InternalMessage[]
+
+  @@index([conversationType])
+  @@index([entityType, entityId])
+  @@index([createdById])
+  @@index([isClosed])
+  @@index([deletedAt])
+  @@map("internal_conversations")
+}
+
+model ConversationParticipant {
+  id             String                      @id @default(uuid()) @db.Uuid
+  conversationId String                      @db.Uuid
+  userId         String                      @db.Uuid
+  role           ConversationParticipantRole @default(MEMBER)
+  joinedAt       DateTime                    @default(now())
+  leftAt         DateTime?
+  lastReadAt     DateTime?
+  isMuted        Boolean                     @default(false)
+  createdAt      DateTime                    @default(now())
+  updatedAt      DateTime                    @updatedAt
+
+  conversation InternalConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+  @@index([conversationId])
+  @@map("conversation_participants")
+}
+
+model InternalMessage {
+  id               String              @id @default(uuid()) @db.Uuid
+  conversationId   String              @db.Uuid
+  senderId         String              @db.Uuid
+  messageType      InternalMessageType @default(TEXT)
+  content          String?             @db.Text
+  replyToMessageId String?             @db.Uuid
+  isEdited         Boolean             @default(false)
+  editedAt         DateTime?
+  isDeleted        Boolean             @default(false)
+  deletedAt        DateTime?
+  deletedById      String?             @db.Uuid
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  conversation InternalConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User                 @relation("MessageSender", fields: [senderId], references: [id], onDelete: Restrict)
+  deletedBy    User?                @relation("MessageDeleter", fields: [deletedById], references: [id], onDelete: SetNull)
+  replyTo      InternalMessage?     @relation("MessageReplies", fields: [replyToMessageId], references: [id], onDelete: SetNull)
+  replies      InternalMessage[]    @relation("MessageReplies")
+  attachments  MessageAttachment[]
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+  @@index([isDeleted])
+  @@map("internal_messages")
+}
+
+model MessageAttachment {
+  id               String   @id @default(uuid()) @db.Uuid
+  messageId        String   @db.Uuid
+  fileName         String
+  originalFileName String
+  mimeType         String
+  fileSize         Int
+  storagePath      String
+  uploadedById     String   @db.Uuid
+  createdAt        DateTime @default(now())
+  deletedAt        DateTime?
+
+  message    InternalMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  uploadedBy User            @relation("MessageAttachmentUploader", fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  @@index([messageId])
+  @@index([uploadedById])
+  @@index([deletedAt])
+  @@map("message_attachments")
+}
+
+model TaskUpdate {
+  id         String         @id @default(uuid()) @db.Uuid
+  taskId     String         @db.Uuid
+  userId     String         @db.Uuid
+  updateType TaskUpdateType
+  oldStatus  TaskStatus?
+  newStatus  TaskStatus?
+  message    String?        @db.Text
+  createdAt  DateTime       @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation("TaskUpdateAuthor", fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([taskId, createdAt])
+  @@index([userId])
+  @@map("task_updates")
+}
+
+model TaskEvidence {
+  id               String   @id @default(uuid()) @db.Uuid
+  taskId           String   @db.Uuid
+  fileName         String
+  originalFileName String
+  mimeType         String
+  fileSize         Int
+  storagePath      String
+  uploadedById     String   @db.Uuid
+  description      String?  @db.Text
+  createdAt        DateTime @default(now())
+  deletedAt        DateTime?
+
+  task       Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploadedBy User @relation("TaskEvidenceUploader", fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  @@index([taskId])
+  @@index([uploadedById])
+  @@index([deletedAt])
+  @@map("task_evidences")
+}
+
+// ─── Sprint 20: Mobile offline sync ─────────────────────────────
+// Timezone reference for mobile clients: Asia/Riyadh
+
+enum MobileSyncStatus {
+  RECEIVED
+  PROCESSING
+  COMPLETED
+  REJECTED
+  CONFLICT
+  FAILED
+}
+
+enum MobileDevicePlatform {
+  ANDROID
+  IOS
+  OTHER
+}
+
+model UserMobileDevice {
+  id               String               @id @default(uuid()) @db.Uuid
+  userId           String               @db.Uuid
+  deviceUuid       String
+  platform         MobileDevicePlatform
+  appVersion       String
+  deviceNameMasked String?
+  lastLoginAt      DateTime?
+  lastSeenAt       DateTime?
+  isActive         Boolean              @default(true)
+  pushCapability   Boolean              @default(false)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  syncOperations MobileSyncOperation[]
+
+  @@unique([userId, deviceUuid])
+  @@index([userId])
+  @@index([isActive])
+  @@map("user_mobile_devices")
+}
+
+model MobileSyncOperation {
+  id                  String           @id @default(uuid()) @db.Uuid
+  userId              String           @db.Uuid
+  deviceId            String?          @db.Uuid
+  idempotencyKey      String
+  operationType       String
+  entityType          String
+  localEntityId       String?
+  serverEntityId      String?
+  status              MobileSyncStatus
+  requestHash         String?
+  /// Small non-sensitive summary / result id only — never full secrets or tokens
+  responseSummaryJson String?          @db.Text
+  failureReason       String?
+  clientCreatedAt     DateTime?
+  receivedAt          DateTime         @default(now())
+  processedAt         DateTime?
+  createdAt           DateTime         @default(now())
+
+  user   User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device UserMobileDevice? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId])
+  @@index([status])
+  @@index([receivedAt])
+  @@index([deviceId])
+  @@index([operationType])
+  @@map("mobile_sync_operations")
+}
+

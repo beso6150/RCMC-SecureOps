@@ -1,0 +1,59 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build
+dist/
+build/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Prisma
+backend/prisma/*.db
+backend/prisma/*.db-journal
+
+# Coverage / test
+coverage/
+.nyc_output/
+
+# Runtime uploads / secure storage
+backend/uploads/
+backend/storage/cctv-operations/**
+!backend/storage/cctv-operations/.gitkeep
+backend/storage/incidents/**
+!backend/storage/incidents/.gitkeep
+uploads/
+
+# Flutter / React (future)
+mobile/.dart_tool/
+mobile/build/
+dashboard/node_modules/
+dashboard/dist/
+
+backend/storage/reports/**
+!backend/storage/reports/.gitkeep
+
+backend/storage/communications/**
+!backend/storage/communications/.gitkeep
+backend/storage/tasks/**
+!backend/storage/tasks/.gitkeep

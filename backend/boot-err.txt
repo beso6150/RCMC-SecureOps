@@ -1,0 +1,2 @@
+npm warn Unknown env config "devdir". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+{"level":"error","message":"Failed to connect to database","timestamp":"2026-07-20T16:41:28.009Z","error":"Can't reach database server at `localhost:5432`\n\nPlease make sure your database server is running at `localhost:5432`."}

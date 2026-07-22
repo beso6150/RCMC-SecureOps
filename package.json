@@ -1,0 +1,22 @@
+{
+  "version": "1.0.0",
+  "description": "RCMC SecureOps monorepo",
+  "private": true,
+  "scripts": {
+    "setup": "powershell -ExecutionPolicy Bypass -File ./setup.ps1",
+    "backend:dev": "npm --prefix backend run dev",
+    "backend:build": "npm --prefix backend run build",
+    "backend:lint": "npm --prefix backend run lint",
+    "db:migrate": "npm --prefix backend run prisma:deploy",
+    "db:seed": "npm --prefix backend run prisma:seed",
+    "web:dev": "npm --prefix web run dev",
+    "web:build": "npm --prefix web run build",
+    "mobile:get": "cd mobile && flutter pub get",
+    "mobile:analyze": "cd mobile && flutter analyze",
+    "build:all": "npm run backend:build && npm run web:build",
+    "start:backend": "powershell -ExecutionPolicy Bypass -File ./start-backend.ps1",
+    "start:web": "powershell -ExecutionPolicy Bypass -File ./start-web.ps1",
+    "start:mobile": "powershell -ExecutionPolicy Bypass -File ./start-mobile.ps1",
+    "start:all": "powershell -ExecutionPolicy Bypass -File ./scripts/start-all.ps1"
+  }
+}
