@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { fetchDashboardSummary } from '../../api/dashboard';
 import { useAuth } from '../../auth/AuthContext';
-import { ROLE_LABELS } from '../../auth/rbac';
+import { ROLE_LABELS, RoleCodes } from '../../auth/rbac';
 import { DASHBOARD_QUERY_KEY } from '../../hooks/useSocket';
 import {
   MOBILE_ACCESS_DENIED_MESSAGE,
@@ -13,6 +13,7 @@ import {
 import { MobileLoadingState } from '../components/MobileLoadingState';
 import { MobilePageHeader } from '../components/MobilePageHeader';
 import { MobileStatCard } from '../components/MobileStatCard';
+import { SecurityGuardMobileHome } from './SecurityGuardMobileHome';
 
 interface LocationState {
   accessDenied?: boolean;
@@ -20,6 +21,16 @@ interface LocationState {
 }
 
 export function RoleBasedMobileHome() {
+  const { user } = useAuth();
+
+  if (user?.roleCode === RoleCodes.SECURITY_GUARD) {
+    return <SecurityGuardMobileHome />;
+  }
+
+  return <DefaultRoleMobileHome />;
+}
+
+function DefaultRoleMobileHome() {
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();

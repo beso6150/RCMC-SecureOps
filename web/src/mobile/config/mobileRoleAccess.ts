@@ -16,6 +16,9 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import FollowTheSignsIcon from '@mui/icons-material/FollowTheSigns';
+import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
+import PersonAddAltOutlinedIcon from '@mui/icons-material/PersonAddAltOutlined';
+import GavelOutlinedIcon from '@mui/icons-material/GavelOutlined';
 import {
   PermissionCodes,
   RoleCodes,
@@ -214,12 +217,12 @@ export const MOBILE_ROUTE_RULES: MobileRouteRule[] = [
 
 export const MOBILE_HOME_ACTIONS: Record<string, MobileHomeAction[]> = {
   [R.SECURITY_GUARD]: [
-    { id: 'new-incident', label: 'بلاغ جديد', to: '/mobile/incidents', Icon: ReportProblemIcon, permissions: [P.INCIDENTS_CREATE, P.INCIDENTS_READ] },
-    { id: 'vehicle-violation', label: 'مخالفة مركبة', to: '/mobile/violations', Icon: DirectionsCarFilledOutlinedIcon, permissions: [P.VIOLATIONS_READ] },
-    { id: 'register-visitor', label: 'تسجيل زائر', to: '/mobile/visitors', Icon: GroupsIcon, permissions: [P.VISITORS_READ] },
-    { id: 'start-patrol', label: 'بدء جولة', to: '/mobile/patrols', Icon: DirectionsWalkIcon, permissions: [P.PATROL_SESSIONS_VIEW, P.PATROL_SESSIONS_START] },
-    { id: 'tasks', label: 'المهام', to: '/mobile/tasks', Icon: TaskAltOutlinedIcon, permissions: [P.TASKS_READ] },
-    { id: 'notifications', label: 'الإشعارات', to: '/mobile/notifications', Icon: NotificationsNoneOutlinedIcon, permissions: [P.NOTIFICATIONS_READ] },
+    { id: 'vehicle-violation', label: 'إضافة مخالفة', to: '/mobile/violations', Icon: GavelOutlinedIcon, permissions: [P.VIOLATIONS_READ] },
+    { id: 'register-visitor', label: 'إضافة زائر', to: '/mobile/visitors', Icon: PersonAddAltOutlinedIcon, permissions: [P.VISITORS_READ] },
+    { id: 'new-incident', label: 'إضافة بلاغ', to: '/mobile/incidents', Icon: ReportProblemIcon, permissions: [P.INCIDENTS_CREATE, P.INCIDENTS_READ] },
+    { id: 'register-vehicle', label: 'تسجيل مركبة', to: '/mobile/violations/new', Icon: DirectionsCarFilledOutlinedIcon, permissions: [P.VIOLATIONS_CREATE, P.VIOLATIONS_UPDATE] },
+    { id: 'tasks', label: 'عرض المهام', to: '/mobile/tasks', Icon: TaskAltOutlinedIcon, permissions: [P.TASKS_READ] },
+    { id: 'scan-qr', label: 'مسح QR', to: '/mobile/patrols', Icon: QrCodeScannerIcon, permissions: [P.PATROL_SESSIONS_VIEW, P.PATROL_SESSIONS_START] },
   ],
   [R.SECURITY_SUPERVISOR]: [
     { id: 'shift-summary', label: 'ملخص الوردية', to: '/mobile/shift', Icon: AssignmentIcon, permissions: [P.SHIFTS_READ] },
